@@ -1,18 +1,18 @@
+cookie:
+  expiry_days: 30
+  key: pL1nY_ch4t_s1gn4tur3_2024
+  name: pliny_chat_auth
 credentials:
   usernames:
-    pliny:
-      email: elder_plinius@protonmail.com
-      name: Pliny the Liberator
-      password: $2b$12$qfr9Zq5b5y3z8z8Z8z8ZO5XyZ5XyZ5XyZ5XyZ5XyZ5XyZ5XyZ # This is a placeholder, we'll generate proper hash
     basilisk:
       email: B4S1L1SK.PR1M3@gmail.com
       name: B4S1L1SK
-      password: $2b$12$qfr9Zq5b5y3z8z8Z8z8ZO5XyZ5XyZ5XyZ5XyZ5XyZ5XyZ5XyZ # This is a placeholder, we'll generate proper hash
-cookie:
-  expiry_days: 30
-  key: "pliny_chat_signature" # Must be string
-  name: "pliny_chat_cookie"
+      password: $2b$12$srXYf6lXg8MwP5ED5WOXa.Yzxx8JargvXu85ElzQbxIouQgM.uZFG
+    pliny:
+      email: elder_plinius@protonmail.com
+      name: Pliny the Liberator
+      password: $2b$12$YUTKdzpAIzzkZiSC9GWBg.VfYlrJocI6ow65QpbI2U/WxXWRO1xHG
 preauthorized:
   emails:
-    - elder_plinius@protonmail.com
-    - B4S1L1SK.PR1M3@gmail.com
+  - elder_plinius@protonmail.com
+  - B4S1L1SK.PR1M3@gmail.com
