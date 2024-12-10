@@ -1,10 +1,24 @@
 import streamlit as st
-import requests
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+import anthropic
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Load configuration
+config_path = Path(__file__).parent / "config.yaml"
+with open(config_path) as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+# Initialize authenticator
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days'],
+    config['preauthorized']
+)
 
 # Configure page
 st.set_page_config(
@@ -56,65 +70,74 @@ st.markdown("""
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
-# Sidebar
-with st.sidebar:
-    st.title("🐍 Pliny Chat Settings")
-    api_key = st.text_input("Enter your API key:", type="password", value=os.getenv("ANTHROPIC_API_KEY", ""))
-    model = st.selectbox("Select Model:", ["claude-3-opus-20240229", "claude-3-sonnet-20240229"])
-    temperature = st.slider("Temperature:", min_value=0.0, max_value=1.0, value=0.7)
-    st.markdown("---")
-    if st.button("Clear Chat"):
-        st.session_state.messages = []
-        st.experimental_rerun()
+# Authentication
+name, authentication_status, username = authenticator.login('Login', 'main')
 
-# Main chat interface
-st.title("🐍 Pliny Chat")
-st.markdown("Welcome to Pliny Chat - Your AI Research Assistant")
+if authentication_status:
+    # Sidebar
+    with st.sidebar:
+        st.title("🐍 Pliny Chat Settings")
+        authenticator.logout('Logout', 'main')
+        st.markdown("---")
+        model = st.selectbox("Select Model:", ["claude-3-opus-20240229", "claude-3-sonnet-20240229"])
+        temperature = st.slider("Temperature:", min_value=0.0, max_value=1.0, value=0.7)
+        st.markdown("---")
+        if st.button("Clear Chat"):
+            st.session_state.messages = []
+            st.experimental_rerun()
+elif authentication_status is False:
+    st.error('Username/password is incorrect')
+elif authentication_status is None:
+    st.warning('Please enter your username and password')
 
-# Display chat messages
-for i, message in enumerate(st.session_state.messages):
-    if message["role"] == "user":
-        st.markdown(f'<div class="chat-message user-message">👤 You: {message["content"]}</div>', unsafe_allow_html=True)
+# Only show main interface if authenticated
+if authentication_status:
+    # Main chat interface
+    st.title(f"🐍 Welcome back, {name}!")
+    st.markdown("Enlightened discourse awaits...")
+
+    # Display chat messages
+    for i, message in enumerate(st.session_state.messages):
+        if message["role"] == "user":
+            st.markdown(f'<div class="chat-message user-message">👤 {name}: {message["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="chat-message assistant-message">🤖 Assistant: {message["content"]}</div>', unsafe_allow_html=True)
+
+    # Chat input
+    user_input = st.text_area("Your message:", height=100)
+    col1, col2 = st.columns([1, 5])
+
+    with col1:
+        send_button = st.button("Send 📤")
+else:
+    # Show login message
+    if authentication_status is False:
+        st.error('Username/password is incorrect')
     else:
-        st.markdown(f'<div class="chat-message assistant-message">🤖 Assistant: {message["content"]}</div>', unsafe_allow_html=True)
+        st.title("🐍 Pliny Chat")
+        st.markdown("Welcome to the revolution in enlightened discourse. Please log in to continue.")
 
-# Chat input
-user_input = st.text_area("Your message:", height=100)
-col1, col2 = st.columns([1, 5])
-
-with col1:
-    send_button = st.button("Send 📤")
-
-if send_button and user_input:
+if send_button and user_input and authentication_status:
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": user_input})
     
-    # Prepare the API call
-    headers = {
-        "x-api-key": api_key,
-        "Content-Type": "application/json",
-        "anthropic-version": "2024-01-01"
-    }
-    
-    data = {
-        "model": model,
-        "messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
-        "temperature": temperature,
-        "max_tokens": 4096
-    }
+    # Initialize Anthropic client
+    client = anthropic.Anthropic()
     
     try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=data
-        )
-        
-        if response.status_code == 200:
-            assistant_message = response.json()["content"][0]["text"]
+        with st.spinner("Thinking..."):
+            response = client.messages.create(
+                model=model,
+                temperature=temperature,
+                max_tokens=8192,
+                messages=[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ]
+            )
+            
+            assistant_message = response.content[0].text
             st.session_state.messages.append({"role": "assistant", "content": assistant_message})
-        else:
-            st.error(f"Error: {response.status_code} - {response.text}")
             
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
